@@ -1,0 +1,40 @@
+{
+  "name": "financial-app-monorepo",
+  "version": "1.0.0",
+  "description": "Sistema financeiro com integração WhatsApp",
+  "scripts": {
+    "install:all": "npm run install:gateway && npm run install:whatsapp && npm run install:orchestrator && npm run install:classifier && npm run install:order && npm run install:dashboard",
+    "install:gateway": "cd services/gateway-api && npm install",
+    "install:whatsapp": "cd services/whatsapp-service && npm install",
+    "install:orchestrator": "cd services/message-orchestrator && npm install",
+    "install:classifier": "cd services/classifier-service && npm install",
+    "install:order": "cd services/order-service && npm install",
+    "install:dashboard": "cd services/dashboard-service && npm install",
+    "dev:gateway": "cd services/gateway-api && npm run dev",
+    "dev:whatsapp": "cd services/whatsapp-service && npm run dev",
+    "dev:orchestrator": "cd services/message-orchestrator && npm run dev",
+    "dev:classifier": "cd services/classifier-service && npm run dev",
+    "dev:order": "cd services/order-service && npm run dev",
+    "dev:dashboard": "cd services/dashboard-service && npm run dev",
+    "build:all": "npm run build:gateway && npm run build:whatsapp && npm run build:orchestrator && npm run build:classifier && npm run build:order && npm run build:dashboard",
+    "build:gateway": "cd services/gateway-api && npm run build",
+    "build:whatsapp": "cd services/whatsapp-service && npm run build",
+    "build:orchestrator": "cd services/message-orchestrator && npm run build",
+    "build:classifier": "cd services/classifier-service && npm run build",
+    "build:order": "cd services/order-service && npm run build",
+    "build:dashboard": "cd services/dashboard-service && npm run build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "workspaces": [
+    "services/*",
+    "shared/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "nodemon": "^3.0.0"
+  }
+}

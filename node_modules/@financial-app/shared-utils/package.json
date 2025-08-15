@@ -1,0 +1,20 @@
+{
+  "name": "@financial-app/shared-utils",
+  "version": "1.0.0",
+  "description": "Utilitários compartilhados entre microserviços",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "crypto": "*",
+    "winston": "^3.17.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.11",
+    "typescript": "^5.0.0"
+  }
+}

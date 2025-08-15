@@ -1,0 +1,199 @@
+version: '3.8'
+
+services:
+  # Banco de dados PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: financial-postgres
+    environment:
+      POSTGRES_DB: financial_app
+      POSTGRES_USER: financial_user
+      POSTGRES_PASSWORD: financial_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - financial-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U financial_user -d financial_app"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ para mensageria
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: financial-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: financial_user
+      RABBITMQ_DEFAULT_PASS: financial_pass
+    ports:
+      - "5672:5672"    # AMQP port
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - financial-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis para cache (opcional)
+  redis:
+    image: redis:7-alpine
+    container_name: financial-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - financial-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Gateway API
+  gateway-api:
+    build:
+      context: ./services/gateway-api
+      dockerfile: Dockerfile
+    container_name: financial-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - RABBITMQ_URL=amqp://financial_user:financial_pass@rabbitmq:5672
+      - WHATSAPP_VERIFY_TOKEN=your_verify_token_here
+      - WHATSAPP_APP_SECRET=your_app_secret_here
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - financial-network
+    volumes:
+      - ./services/gateway-api:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # WhatsApp Service
+  whatsapp-service:
+    build:
+      context: ./services/whatsapp-service
+      dockerfile: Dockerfile
+    container_name: financial-whatsapp
+    environment:
+      - NODE_ENV=development
+      - RABBITMQ_URL=amqp://financial_user:financial_pass@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - financial-network
+    volumes:
+      - ./services/whatsapp-service:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # Message Orchestrator
+  message-orchestrator:
+    build:
+      context: ./services/message-orchestrator
+      dockerfile: Dockerfile
+    container_name: financial-orchestrator
+    environment:
+      - NODE_ENV=development
+      - RABBITMQ_URL=amqp://financial_user:financial_pass@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - financial-network
+    volumes:
+      - ./services/message-orchestrator:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # Classifier Service
+  classifier-service:
+    build:
+      context: ./services/classifier-service
+      dockerfile: Dockerfile
+    container_name: financial-classifier
+    environment:
+      - NODE_ENV=development
+      - RABBITMQ_URL=amqp://financial_user:financial_pass@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - financial-network
+    volumes:
+      - ./services/classifier-service:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # Order Service
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    container_name: financial-order
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://financial_user:financial_pass@postgres:5432/financial_app
+      - RABBITMQ_URL=amqp://financial_user:financial_pass@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - financial-network
+    volumes:
+      - ./services/order-service:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # Dashboard Service
+  dashboard-service:
+    build:
+      context: ./services/dashboard-service
+      dockerfile: Dockerfile
+    container_name: financial-dashboard
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - DATABASE_URL=postgresql://financial_user:financial_pass@postgres:5432/financial_app
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - financial-network
+    volumes:
+      - ./services/dashboard-service:/app
+      - /app/node_modules
+    command: npm run dev
+
+networks:
+  financial-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:
